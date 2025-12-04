@@ -3,72 +3,60 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>节奏方块世界 V3.2 (触屏修复版)</title>
+    <title>节奏方块世界 V4 (奖励版)</title>
     <style>
         body { 
             margin: 0; overflow: hidden; background: #000; 
-            font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif; 
+            font-family: 'Microsoft YaHei', sans-serif; 
             user-select: none; -webkit-user-select: none;
-            touch-action: none; /* 关键：交给JS处理触摸 */
+            touch-action: none;
         }
         canvas { display: block; width: 100vw; height: 100vh; z-index: 1;}
 
-        /* 通用半透明面板样式 */
+        /* 通用半透明面板 */
         .glass-panel {
             background: rgba(0, 0, 0, 0.5);
             backdrop-filter: blur(4px);
             border: 2px solid rgba(255, 255, 255, 0.5);
             border-radius: 8px;
-            color: white;
-            padding: 8px;
-            pointer-events: auto; /* 确保能被点击 */
+            color: white; padding: 8px;
+            pointer-events: auto;
         }
 
-        /* 顶部 UI 栏 */
+        /* 顶部 UI */
         #hud-top {
             position: absolute; top: 10px; left: 10px; right: 10px;
             display: flex; justify-content: space-between; align-items: flex-start;
-            pointer-events: none; /* 让触摸穿透空白区域 */
-            z-index: 20; /* 保证在最上层 */
+            pointer-events: none; z-index: 20;
         }
 
-        /* 左侧：设置区 */
-        #settings-area {
-            display: flex; flex-direction: column; gap: 8px;
-        }
-        .control-row {
-            display: flex; align-items: center; gap: 10px; font-size: 14px;
-        }
+        /* 左侧设置区 */
+        #settings-area { display: flex; flex-direction: column; gap: 8px; }
+        .control-row { display: flex; align-items: center; gap: 10px; font-size: 14px; }
         .icon-label { width: 20px; text-align: center; font-size: 18px; }
         
-        /* 修复：增大按钮触摸区域 */
         button.circle-btn {
             width: 36px; height: 36px; border-radius: 5px; 
             border: 2px solid #fff; background: #666; 
             color: white; font-size: 18px; cursor: pointer;
-            display: flex; align-items: center; justify-content: center;
-            box-shadow: inset 0 -3px 0 rgba(0,0,0,0.5); /* MC风格 */
+            box-shadow: inset 0 -3px 0 rgba(0,0,0,0.5);
         }
         button.circle-btn:active { transform: translateY(2px); box-shadow: none; background: #888; }
         .val-display { min-width: 35px; text-align: center; font-weight: bold; font-family: monospace; }
 
-        /* 右侧：分数与结束 */
-        #score-area {
-            display: flex; flex-direction: column; align-items: flex-end; gap: 10px;
-        }
+        /* 右侧分数区 */
+        #score-area { display: flex; flex-direction: column; align-items: flex-end; gap: 10px; }
         #score-box { font-size: 20px; font-weight: bold; color: #FFD700; text-shadow: 2px 2px 0 black; }
+        #combo-box { font-size: 14px; color: #aaa; }
         #end-btn {
             background: #ff4444; border: 2px solid #fff; padding: 8px 15px; color: white; 
             border-radius: 5px; font-weight: bold; cursor: pointer; 
-            box-shadow: inset 0 -3px 0 rgba(0,0,0,0.3);
-            pointer-events: auto;
+            box-shadow: inset 0 -3px 0 rgba(0,0,0,0.3); pointer-events: auto;
         }
-        #end-btn:active { transform: translateY(2px); box-shadow: none; }
 
-        /* 启动/结束全屏遮罩 (MC风格背景) */
+        /* 全屏遮罩 (MC风格) */
         .overlay-screen { 
             position: absolute; top:0; left:0; width:100%; height:100%; 
-            /* 简易泥土纹理 */
             background: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAgAAAAICAYAAADED76LAAAAF0lEQVQYV2NkYGD4z4AHYGNgQAmGLAMAMkkC/Q/8c4gAAAAASUVORK5CYII=') repeat;
             background-color: #3a2e23;
             display: flex; flex-direction: column; align-items: center; justify-content: center; 
@@ -76,21 +64,30 @@
         }
         h1 { 
             font-size: 42px; margin-bottom: 20px; color: #FFD700;
-            text-shadow: 3px 3px 0 #222;
-            font-family: 'Courier New', monospace; 
+            text-shadow: 3px 3px 0 #222; font-family: 'Courier New', monospace; 
         }
         p { font-size: 16px; color: #eee; margin-bottom: 40px; line-height: 1.6; max-width: 80%; text-shadow: 1px 1px 0 #000; }
 
-        /* MC风格大按钮 */
+        /* MC大按钮 */
         .big-btn { 
             padding: 15px 60px; font-size: 24px; 
             background: #72b936; border: 3px solid #3c8a1f;
             color: #fff; font-weight: bold; cursor: pointer;
             box-shadow: inset 0 -6px 0 rgba(0,0,0,0.3), 0 6px 0 #2a6315;
-            text-shadow: 2px 2px 0 #3c8a1f;
-            transition: transform 0.1s;
+            text-shadow: 2px 2px 0 #3c8a1f; transition: transform 0.1s;
         }
         .big-btn:active { transform: translateY(4px); box-shadow: inset 0 -2px 0 rgba(0,0,0,0.3), 0 2px 0 #2a6315; }
+
+        /* 奖励界面专属 */
+        #reward-screen { display: none; z-index: 110; background: rgba(0,0,0,0.85); backdrop-filter: blur(10px); }
+        #reward-icon { 
+            width: 150px; height: 150px; image-rendering: pixelated; 
+            margin: 20px auto; animation: bounce 2s infinite; 
+            filter: drop-shadow(0 0 20px gold);
+        }
+        @keyframes bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-20px); } }
+        .reward-title { color: #FFD700; font-size: 32px; margin-bottom: 10px; }
+        .reward-name { color: #fff; font-size: 24px; margin-bottom: 30px; font-weight: bold; }
 
         #game-over-screen { display: none; }
     </style>
@@ -100,11 +97,18 @@
     <div id="start-screen" class="overlay-screen">
         <h1>⛏️ 节奏方块</h1>
         <p>
-            手指按住屏幕任意空白处滑动。<br>
+            手指按住屏幕滑动接音符。<br>
             <b>看头顶进度条</b>，红色时准备变身！<br>
-            接住和数字匹配的方块。
+            每收集 <b>30个</b> 音符有惊喜奖励哦！
         </p>
         <button class="big-btn" onclick="startGame()">开始冒险</button>
+    </div>
+
+    <div id="reward-screen" class="overlay-screen">
+        <div class="reward-title">🎉 恭喜达成! 🎉</div>
+        <img id="reward-icon" src="" alt="Reward">
+        <div id="reward-name" class="reward-name">奖励名称</div>
+        <button class="big-btn" onclick="resumeGame()">继续挑战</button>
     </div>
 
     <div id="game-over-screen" class="overlay-screen">
@@ -130,7 +134,7 @@
         </div>
 
         <div id="score-area">
-            <div id="score-box" class="glass-panel">0</div>
+            <div id="score-box" class="glass-panel">0 / 30</div>
             <button id="end-btn" onclick="endGame()">结束</button>
         </div>
     </div>
@@ -139,11 +143,19 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/howler/2.2.3/howler.min.js"></script>
 
     <script>
-        // --- 1. 游戏配置 ---
+        // --- 1. 配置与全局变量 ---
         const NOTE_TYPES = [
             { id: 4, color: 0xFF4444, name: '四分音符', speak: '四分音符' }, 
             { id: 8, color: 0x44FF44, name: '八分音符', speak: '八分音符' }, 
             { id: 16, color: 0x4488FF, name: '十六分音符', speak: '十六分音符' } 
+        ];
+
+        // 奖励池配置
+        const REWARDS = [
+            { id: 'chocolate', name: '一块巧克力', color: '#8B4513', type: 'rect' },
+            { id: 'candy', name: '一颗糖果', color: '#FF69B4', type: 'circle' },
+            { id: 'icecream', name: '一个冰淇淋', color: '#FFFACD', type: 'cone' },
+            { id: 'cake', name: '一块蛋糕', color: '#FFD700', type: 'cake' }
         ];
 
         let scene, camera, renderer;
@@ -153,6 +165,8 @@
         let particles = [];
         
         let score = 0;
+        let notesCollected = 0; // 当前阶段收集数量
+        let totalNotes = 0;     // 总收集数
         let isPlaying = false;
         let animationId;
         
@@ -163,7 +177,7 @@
         let currentTargetId = 4;
         let worldWidth = 10;
         
-        let bgm, sfxSwitch, sfxPop;
+        let bgm, sfxSwitch, sfxPop, sfxWin;
         let synth = window.speechSynthesis;
         let speechEnabled = false;
         let chineseVoice = null;
@@ -173,29 +187,55 @@
         const scoreBox = document.getElementById('score-box');
         const startScreen = document.getElementById('start-screen');
         const gameOverScreen = document.getElementById('game-over-screen');
+        const rewardScreen = document.getElementById('reward-screen');
         const hudTop = document.getElementById('hud-top');
         const speedValEl = document.getElementById('speed-val');
         const volValEl = document.getElementById('vol-val');
         const finalScoreText = document.getElementById('final-score-text');
 
-        // --- 2. 音频系统 ---
-        function initAudioSystem() {
-            bgm = new Howl({
-                src: ['https://assets.mixkit.co/music/preview/mixkit-valley-sunset-127.mp3'],
-                loop: true,
-                volume: 0.3 * masterVolume,
-                html5: true
-            });
-
-            sfxSwitch = new Howl({
-                src: ['https://assets.mixkit.co/sfx/preview/mixkit-mechanical-crate-pick-up-3154.mp3'],
-                volume: 0.6 * masterVolume
-            });
+        // --- 2. 像素画生成器 (生成 MC 风格图标) ---
+        function generatePixelIcon(type, color) {
+            const canvas = document.createElement('canvas');
+            canvas.width = 32; canvas.height = 32; // 低分辨率
+            const ctx = canvas.getContext('2d');
             
-            sfxPop = new Howl({
-                src: ['https://assets.mixkit.co/sfx/preview/mixkit-arcade-game-jump-coin-216.mp3'],
-                volume: 0.4 * masterVolume
-            });
+            ctx.imageSmoothingEnabled = false;
+            
+            if (type === 'rect') { // 巧克力
+                ctx.fillStyle = '#4e301e'; ctx.fillRect(6, 6, 20, 24); // 包装
+                ctx.fillStyle = color; ctx.fillRect(6, 6, 20, 18); // 露出的巧克力
+                ctx.fillStyle = '#a05e36'; ctx.fillRect(8, 8, 6, 6); ctx.fillRect(16, 8, 6, 6);
+            } 
+            else if (type === 'circle') { // 糖果
+                ctx.fillStyle = '#ffffff'; ctx.fillRect(2, 12, 28, 8); // 包装纸两头
+                ctx.beginPath(); ctx.arc(16, 16, 10, 0, Math.PI*2); ctx.fillStyle = color; ctx.fill(); // 糖心
+                ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(10,10); ctx.lineTo(22,22); ctx.stroke();
+            }
+            else if (type === 'cone') { // 冰淇淋
+                ctx.fillStyle = '#d2b48c'; ctx.beginPath(); ctx.moveTo(16, 30); ctx.lineTo(8, 14); ctx.lineTo(24, 14); ctx.fill(); // 蛋筒
+                ctx.fillStyle = color; ctx.beginPath(); ctx.arc(16, 12, 10, 0, Math.PI*2); ctx.fill(); // 冰球
+                ctx.fillStyle = '#ff0000'; ctx.beginPath(); ctx.arc(16, 6, 3, 0, Math.PI*2); ctx.fill(); // 樱桃
+            }
+            else if (type === 'cake') { // 蛋糕
+                ctx.fillStyle = '#8B4513'; ctx.fillRect(4, 20, 24, 8); // 底座
+                ctx.fillStyle = '#fff'; ctx.fillRect(4, 14, 24, 6); // 奶油
+                ctx.fillStyle = color; ctx.fillRect(14, 6, 4, 8); // 蜡烛
+                ctx.fillStyle = '#ffaa00'; ctx.fillRect(15, 2, 2, 4); // 火苗
+            }
+            else { // 默认奖杯
+                ctx.fillStyle = '#FFD700';
+                ctx.fillRect(8, 8, 16, 12); ctx.fillRect(14, 20, 4, 8); ctx.fillRect(8, 28, 16, 4);
+            }
+
+            return canvas.toDataURL();
+        }
+
+        // --- 3. 音频与语音 ---
+        function initAudioSystem() {
+            bgm = new Howl({ src: ['https://assets.mixkit.co/music/preview/mixkit-valley-sunset-127.mp3'], loop: true, volume: 0.3 * masterVolume, html5: true });
+            sfxSwitch = new Howl({ src: ['https://assets.mixkit.co/sfx/preview/mixkit-mechanical-crate-pick-up-3154.mp3'], volume: 0.6 * masterVolume });
+            sfxPop = new Howl({ src: ['https://assets.mixkit.co/sfx/preview/mixkit-arcade-game-jump-coin-216.mp3'], volume: 0.4 * masterVolume });
+            sfxWin = new Howl({ src: ['https://assets.mixkit.co/sfx/preview/mixkit-winning-chimes-2015.mp3'], volume: 0.6 * masterVolume });
 
             if ('speechSynthesis' in window) {
                 speechEnabled = true;
@@ -204,211 +244,161 @@
                     chineseVoice = voices.find(v => v.lang.includes('zh')) || null;
                 };
                 loadVoices();
-                if (synth.onvoiceschanged !== undefined) {
-                    synth.onvoiceschanged = loadVoices;
-                }
+                if (synth.onvoiceschanged !== undefined) synth.onvoiceschanged = loadVoices;
             }
         }
 
-        function playSound(type) {
-            if (!isPlaying) return;
-            if (speechEnabled && type.speakName) {
+        function speak(text) {
+            if (!isPlaying && text !== "Reward") return; // Reward 状态特殊处理
+            if (speechEnabled) {
                 synth.cancel(); 
-                const utterance = new SpeechSynthesisUtterance(type.speakName);
-                utterance.rate = 1.2; 
-                utterance.volume = masterVolume;
+                const utterance = new SpeechSynthesisUtterance(text);
+                utterance.rate = 1.2; utterance.volume = masterVolume;
                 if (chineseVoice) utterance.voice = chineseVoice;
                 synth.speak(utterance);
-            } else {
-                sfxPop.play();
             }
         }
 
         function setGlobalVolume(val) {
             masterVolume = parseFloat(val.toFixed(1));
-            if(masterVolume < 0) masterVolume = 0;
-            if(masterVolume > 1) masterVolume = 1;
-            
+            if(masterVolume < 0) masterVolume = 0; if(masterVolume > 1) masterVolume = 1;
             Howler.volume(masterVolume);
             volValEl.innerText = Math.round(masterVolume * 100) + "%";
         }
 
-        function adjustSpeed(direction) {
-            gameSpeed += direction * 0.2;
-            if (gameSpeed < 0.4) gameSpeed = 0.4;
-            if (gameSpeed > 2.0) gameSpeed = 2.0;
-            
-            speedValEl.innerText = gameSpeed.toFixed(1);
-            currentSwitchInterval = baseSwitchInterval / gameSpeed;
+        // --- 4. 奖励逻辑 ---
+        function checkReward() {
+            if (notesCollected >= 30) {
+                showReward();
+            }
         }
 
-        function adjustVolume(delta) {
-            setGlobalVolume(masterVolume + delta);
+        function showReward() {
+            isPlaying = false; // 暂停游戏逻辑
+            notesCollected = 0; // 重置当前阶段计数
+            updateScoreDisplay();
+            
+            // 随机选取奖励
+            const reward = REWARDS[Math.floor(Math.random() * REWARDS.length)];
+            
+            // 生成图标
+            const iconUrl = generatePixelIcon(reward.type, reward.color);
+            document.getElementById('reward-icon').src = iconUrl;
+            document.getElementById('reward-name').innerText = reward.name;
+            document.getElementById('reward-name').style.color = reward.color;
+
+            // 播放音效和语音
+            sfxWin.play();
+            if (speechEnabled) {
+                const utterance = new SpeechSynthesisUtterance("太棒了！奖励你" + reward.name);
+                utterance.rate = 1.1; 
+                if (chineseVoice) utterance.voice = chineseVoice;
+                synth.speak(utterance);
+            }
+
+            // 显示界面
+            rewardScreen.style.display = 'flex';
         }
 
-        // --- 3. 游戏流程控制 ---
-        function startGame() {
-            if (!scene) {
-                initAudioSystem();
-                initThreeJS();
-                initInput();
-            } else {
-                notes.forEach(n => scene.remove(n.mesh));
-                notes = [];
-                particles.forEach(p => scene.remove(p));
-                particles = [];
-            }
-
-            if (Howler.ctx && Howler.ctx.state === 'suspended') {
-                Howler.ctx.resume();
-            }
-
-            score = 0;
-            scoreBox.innerText = score;
-            gameSpeed = 1.0;
-            currentSwitchInterval = baseSwitchInterval;
-            adjustSpeed(0); 
-            setGlobalVolume(0.5); 
-
-            startScreen.style.display = 'none';
-            gameOverScreen.style.display = 'none';
-            hudTop.style.display = 'flex';
-            
-            bgm.play();
+        function resumeGame() {
+            rewardScreen.style.display = 'none';
             isPlaying = true;
-            lastSwitchTime = Date.now();
-            
-            if(speechEnabled) { const u = new SpeechSynthesisUtterance(''); synth.speak(u); }
-
+            lastSwitchTime = Date.now(); // 重置计时，防止立刻切换
             animate();
         }
 
-        function endGame() {
-            isPlaying = false;
-            cancelAnimationFrame(animationId);
-            bgm.stop();
-            synth.cancel();
+        // --- 5. 游戏控制 ---
+        function adjustSpeed(direction) {
+            gameSpeed += direction * 0.2;
+            if (gameSpeed < 0.4) gameSpeed = 0.4; if (gameSpeed > 2.0) gameSpeed = 2.0;
+            speedValEl.innerText = gameSpeed.toFixed(1);
+            currentSwitchInterval = baseSwitchInterval / gameSpeed;
+        }
+        function adjustVolume(delta) { setGlobalVolume(masterVolume + delta); }
 
-            hudTop.style.display = 'none';
-            gameOverScreen.style.display = 'flex';
-            finalScoreText.innerText = `最终得分: ${score}`;
+        function startGame() {
+            if (!scene) { initAudioSystem(); initThreeJS(); initInput(); }
+            else { notes.forEach(n => scene.remove(n.mesh)); notes = []; particles.forEach(p => scene.remove(p)); particles = []; }
+            if (Howler.ctx && Howler.ctx.state === 'suspended') Howler.ctx.resume();
+
+            score = 0; notesCollected = 0; totalNotes = 0;
+            updateScoreDisplay();
+            gameSpeed = 1.0; currentSwitchInterval = baseSwitchInterval;
+            adjustSpeed(0); setGlobalVolume(0.5); 
+
+            startScreen.style.display = 'none'; gameOverScreen.style.display = 'none'; hudTop.style.display = 'flex';
+            bgm.play(); isPlaying = true; lastSwitchTime = Date.now();
+            if(speechEnabled) { const u = new SpeechSynthesisUtterance(''); synth.speak(u); }
+            animate();
         }
 
+        function updateScoreDisplay() {
+            scoreBox.innerText = `${notesCollected} / 30`;
+        }
+
+        function endGame() {
+            isPlaying = false; cancelAnimationFrame(animationId);
+            bgm.stop(); synth.cancel();
+            hudTop.style.display = 'none'; gameOverScreen.style.display = 'flex';
+            finalScoreText.innerText = `总收集: ${totalNotes} 个音符`;
+        }
         function restartGame() { startGame(); }
 
-        // --- 4. 关键修复：触摸输入逻辑 ---
+        // --- 6. 输入与渲染 (保持 V3.2 优化) ---
         function initInput() {
-            // 绑定到 document，确保覆盖全屏
             document.addEventListener('touchstart', onTouch, { passive: false });
             document.addEventListener('touchmove', onTouch, { passive: false });
-            // PC 鼠标支持
-            document.addEventListener('mousemove', (e) => { 
-                if(isPlaying) updatePointer(e.clientX, e.clientY); 
-            });
+            document.addEventListener('mousemove', (e) => { if(isPlaying) updatePointer(e.clientX, e.clientY); });
         }
-
         function onTouch(e) {
-            // 检查点击的目标是否是按钮
             const target = e.target;
-            // 如果点击的是按钮（TAGNAME为BUTTON）或者按钮内部元素，不阻止默认行为，让点击生效
-            if (target.tagName === 'BUTTON' || target.closest('button')) {
-                return; 
-            }
-
-            // 只有点击非按钮区域（游戏区域）时，才阻止默认滚动，并移动方块
+            if (target.tagName === 'BUTTON' || target.closest('button')) return;
             e.preventDefault();
             if(!isPlaying) return;
-            
-            const touch = e.touches[0];
-            updatePointer(touch.clientX, touch.clientY);
+            updatePointer(e.touches[0].clientX, e.touches[0].clientY);
         }
-
         function updatePointer(x, y) {
             const ndcX = (x / window.innerWidth) * 2 - 1;
             const ndcY = -(y / window.innerHeight) * 2 + 1;
-            const visibleWidth = calculateVisibleWidthAtZ(0);
-            const visibleHeight = calculateVisibleHeightAtZ(0);
-            pointer.x = ndcX * (visibleWidth / 2);
-            pointer.y = ndcY * (visibleHeight / 2);
+            const vw = calculateVisibleWidthAtZ(0); const vh = calculateVisibleHeightAtZ(0);
+            pointer.x = ndcX * (vw / 2); pointer.y = ndcY * (vh / 2);
         }
+        function calculateVisibleWidthAtZ(depth) { return calculateVisibleHeightAtZ(depth) * camera.aspect; }
+        function calculateVisibleHeightAtZ(depth) { return 2 * Math.tan(camera.fov * Math.PI / 180 / 2) * Math.abs(camera.position.z - depth); }
 
-        function calculateVisibleWidthAtZ(depth) {
-            const height = calculateVisibleHeightAtZ(depth);
-            return height * camera.aspect;
-        }
-        function calculateVisibleHeightAtZ(depth) {
-            const vFOV = camera.fov * Math.PI / 180;
-            return 2 * Math.tan(vFOV / 2) * Math.abs(camera.position.z - depth);
-        }
-
-        // --- 5. 纹理与模型 ---
         function createNumberTexture(num, colorHex) {
-            const canvas = document.createElement('canvas');
-            canvas.width = 128; canvas.height = 128;
+            const canvas = document.createElement('canvas'); canvas.width = 128; canvas.height = 128;
             const ctx = canvas.getContext('2d');
             const colorStr = '#' + colorHex.toString(16).padStart(6, '0');
-            
             ctx.fillStyle = colorStr; ctx.fillRect(8, 8, 112, 112);
             ctx.lineWidth = 8; ctx.strokeStyle = "rgba(0,0,0,0.3)"; ctx.strokeRect(8, 8, 112, 112);
             ctx.fillStyle = '#ffffff'; ctx.font = "bold 80px 'Courier New'";
-            ctx.textAlign = "center"; ctx.textBaseline = "middle";
-            ctx.fillText(num, 64, 64);
-            const texture = new THREE.CanvasTexture(canvas);
-            texture.magFilter = THREE.NearestFilter; 
-            return texture;
+            ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText(num, 64, 64);
+            const t = new THREE.CanvasTexture(canvas); t.magFilter = THREE.NearestFilter; return t;
         }
 
         function initThreeJS() {
-            scene = new THREE.Scene();
-            scene.background = new THREE.Color(0x87CEEB); 
-            scene.fog = new THREE.Fog(0x87CEEB, 15, 40);
-
+            scene = new THREE.Scene(); scene.background = new THREE.Color(0x87CEEB); scene.fog = new THREE.Fog(0x87CEEB, 15, 40);
             camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 100);
             camera.position.z = 12; camera.position.y = 2; camera.lookAt(0,0,0);
-
-            renderer = new THREE.WebGLRenderer({ antialias: false }); 
-            renderer.setSize(window.innerWidth, window.innerHeight);
-            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-            document.body.appendChild(renderer.domElement);
-
+            renderer = new THREE.WebGLRenderer({ antialias: false }); renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); document.body.appendChild(renderer.domElement);
             scene.add(new THREE.AmbientLight(0xcccccc, 0.6));
-            const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
-            dirLight.position.set(5, 10, 7);
-            scene.add(dirLight);
+            const dl = new THREE.DirectionalLight(0xffffff, 0.8); dl.position.set(5, 10, 7); scene.add(dl);
 
-            // 玩家光标
             const cursorGroup = new THREE.Group();
-            const centerBox = new THREE.Mesh(
-                new THREE.BoxGeometry(1.2, 1.2, 1.2),
-                new THREE.MeshPhongMaterial({ map: createNumberTexture("4", 0xFF4444) })
-            );
+            const centerBox = new THREE.Mesh(new THREE.BoxGeometry(1.2, 1.2, 1.2), new THREE.MeshPhongMaterial({ map: createNumberTexture("4", 0xFF4444) }));
             cursorGroup.add(centerBox);
-
-            // 进度条背景
             const barBg = new THREE.Mesh(new THREE.PlaneGeometry(2, 0.3), new THREE.MeshBasicMaterial({ color: 0x333333 }));
-            barBg.position.set(0, 1.2, 0);
-            cursorGroup.add(barBg);
-            // 进度条填充
+            barBg.position.set(0, 1.2, 0); cursorGroup.add(barBg);
             const barFill = new THREE.Mesh(new THREE.PlaneGeometry(1.9, 0.2), new THREE.MeshBasicMaterial({ color: 0x00FF00 }));
-            barFill.geometry.translate(0.95, 0, 0); 
-            barFill.position.set(-0.95, 1.2, 0.01); 
-            cursorGroup.add(barFill);
-
+            barFill.geometry.translate(0.95, 0, 0); barFill.position.set(-0.95, 1.2, 0.01); cursorGroup.add(barFill);
             scene.add(cursorGroup);
             playerCursor = { mesh: cursorGroup, centerBox: centerBox, barFill: barFill, targetId: 4 };
-
-            window.addEventListener('resize', onWindowResize, false);
-            onWindowResize();
+            window.addEventListener('resize', onWindowResize, false); onWindowResize();
         }
+        function onWindowResize() { camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); worldWidth = calculateVisibleWidthAtZ(0); }
 
-        function onWindowResize() {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
-            worldWidth = calculateVisibleWidthAtZ(0);
-        }
-
-        // --- 6. 音符逻辑 ---
         function buildVoxelNote(typeId, colorHex) {
             const group = new THREE.Group();
             const mat = new THREE.MeshPhongMaterial({ color: colorHex, flatShading: true });
@@ -416,119 +406,75 @@
             const coords = [[0,0], [1,0], [0,1], [1,1], [1,2], [1,3], [1,4], [1,5], [1,6]];
             if (typeId >= 8) { coords.push([2,6], [3,5]); } 
             if (typeId >= 16) { coords.push([2,4], [3,3]); } 
-            coords.forEach(p => {
-                const b = new THREE.Mesh(geo, mat);
-                b.position.set(p[0]*0.3, p[1]*0.3, 0);
-                group.add(b);
-            });
-            group.position.set(-0.3, -0.9, 0); 
-            const wrapper = new THREE.Group();
-            wrapper.add(group);
-            wrapper.scale.set(1.5, 1.5, 1.5);
-            return wrapper;
+            coords.forEach(p => { const b = new THREE.Mesh(geo, mat); b.position.set(p[0]*0.3, p[1]*0.3, 0); group.add(b); });
+            group.position.set(-0.3, -0.9, 0); const wrapper = new THREE.Group(); wrapper.add(group); wrapper.scale.set(1.5, 1.5, 1.5); return wrapper;
         }
 
         class Note {
             constructor() {
-                const typeInfo = NOTE_TYPES[Math.floor(Math.random() * NOTE_TYPES.length)];
-                this.typeId = typeInfo.id;
-                this.color = typeInfo.color;
-                this.speakName = typeInfo.speak;
+                const info = NOTE_TYPES[Math.floor(Math.random() * NOTE_TYPES.length)];
+                this.typeId = info.id; this.color = info.color; this.speakName = info.speak;
                 this.mesh = buildVoxelNote(this.typeId, this.color);
-                
-                const spawnX = (Math.random() - 0.5) * (worldWidth - 2);
-                this.mesh.position.set(spawnX, 12, 0);
-                this.mesh.rotation.y = Math.random() * 0.5;
-                scene.add(this.mesh);
-                this.active = true;
+                this.mesh.position.set((Math.random() - 0.5) * (worldWidth - 2), 12, 0);
+                this.mesh.rotation.y = Math.random(); scene.add(this.mesh); this.active = true;
             }
-
-            update(playerPos, playerTargetId) {
+            update(playerPos, targetId) {
                 if (!this.active) return false;
-                this.mesh.position.y -= (0.08 * gameSpeed);
-                this.mesh.rotation.y += 0.02;
-
+                this.mesh.position.y -= (0.08 * gameSpeed); this.mesh.rotation.y += 0.02;
                 if (this.mesh.position.distanceTo(playerPos) < 1.8) {
-                    if (this.typeId === playerTargetId) {
-                        this.hit(true);
-                        return true; 
-                    } else {
-                        this.mesh.position.y += 1.0;
-                        this.mesh.position.x += (Math.random()-0.5)*2;
-                        this.mesh.traverse(c => { if(c.isMesh) c.material.color.setHex(0x555555); });
-                    }
+                    if (this.typeId === targetId) { this.hit(true); return true; }
+                    else { this.mesh.position.y += 1; this.mesh.position.x += (Math.random()-0.5)*2; this.mesh.traverse(c => { if(c.isMesh) c.material.color.setHex(0x555555); }); }
                 }
                 if (this.mesh.position.y < -10) { this.remove(); return true; }
                 return false;
             }
-
             hit(success) {
                 if (success) {
-                    spawnVoxelParticles(this.mesh.position, this.color);
+                    spawnParticles(this.mesh.position, this.color);
                     playSound({ speakName: this.speakName });
-                    score += 10;
-                    scoreBox.innerText = score;
+                    notesCollected++; totalNotes++;
+                    updateScoreDisplay();
+                    checkReward();
                 }
                 this.remove();
             }
             remove() { scene.remove(this.mesh); this.active = false; }
         }
 
-        function spawnVoxelParticles(pos, colorHex) {
+        function spawnParticles(pos, color) {
             for(let i=0; i<6; i++) {
-                const mesh = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.25, 0.25), new THREE.MeshPhongMaterial({ color: colorHex }));
-                mesh.position.copy(pos);
-                mesh.userData = { vel: new THREE.Vector3((Math.random()-0.5)*0.5, Math.random()*0.5, (Math.random()-0.5)*0.5), life: 1.0 };
-                scene.add(mesh);
-                particles.push(mesh);
+                const m = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.25, 0.25), new THREE.MeshPhongMaterial({ color: color }));
+                m.position.copy(pos); m.userData = { vel: new THREE.Vector3((Math.random()-0.5)*0.5, Math.random()*0.5, (Math.random()-0.5)*0.5), life: 1.0 };
+                scene.add(m); particles.push(m);
             }
         }
 
         function updatePlayerTarget() {
-            let nextId;
-            do {
-                const type = NOTE_TYPES[Math.floor(Math.random() * NOTE_TYPES.length)];
-                nextId = type.id;
-            } while (nextId === playerCursor.targetId);
-
+            let nextId; do { nextId = NOTE_TYPES[Math.floor(Math.random() * NOTE_TYPES.length)].id; } while (nextId === playerCursor.targetId);
             playerCursor.targetId = nextId;
-            const typeInfo = NOTE_TYPES.find(t => t.id === nextId);
-            playerCursor.centerBox.material.map = createNumberTexture(nextId.toString(), typeInfo.color);
+            playerCursor.centerBox.material.map = createNumberTexture(nextId.toString(), NOTE_TYPES.find(t => t.id === nextId).color);
             sfxSwitch.play();
         }
 
-        // --- 7. 动画循环 ---
         function animate() {
             if (!isPlaying) return;
             animationId = requestAnimationFrame(animate);
             const now = Date.now();
-            
-            const elapsed = now - lastSwitchTime;
-            const progress = 1.0 - (elapsed / currentSwitchInterval);
-            
+            const progress = 1.0 - ((now - lastSwitchTime) / currentSwitchInterval);
             if (progress <= 0) {
-                updatePlayerTarget();
-                lastSwitchTime = now;
-                playerCursor.barFill.material.color.setHex(0x00FF00); 
+                updatePlayerTarget(); lastSwitchTime = now; playerCursor.barFill.material.color.setHex(0x00FF00);
             } else {
                 playerCursor.barFill.scale.x = Math.max(0, progress);
-                if (progress < 0.25) playerCursor.barFill.material.color.setHex(0xFF0000); // 仅变色不震动
+                if (progress < 0.25) playerCursor.barFill.material.color.setHex(0xFF0000);
             }
-
             playerCursor.mesh.position.x += (pointer.x - playerCursor.mesh.position.x) * 0.3;
             playerCursor.mesh.position.y += (pointer.y - playerCursor.mesh.position.y) * 0.3;
             playerCursor.centerBox.scale.setScalar(1 + Math.sin(now * 0.005) * 0.05);
 
             if (Math.random() < 0.02 * gameSpeed) notes.push(new Note());
-
-            for (let i = notes.length - 1; i >= 0; i--) {
-                const remove = notes[i].update(playerCursor.mesh.position, playerCursor.targetId);
-                if (remove) notes.splice(i, 1);
-            }
+            for (let i = notes.length - 1; i >= 0; i--) { if (notes[i].update(playerCursor.mesh.position, playerCursor.targetId)) notes.splice(i, 1); }
             for (let i = particles.length - 1; i >= 0; i--) {
-                const p = particles[i];
-                p.position.add(p.userData.vel);
-                p.userData.vel.y -= 0.02; p.rotation.x += 0.1;
+                const p = particles[i]; p.position.add(p.userData.vel); p.userData.vel.y -= 0.02; p.rotation.x += 0.1;
                 p.userData.life -= 0.02; p.scale.setScalar(p.userData.life);
                 if (p.userData.life <= 0) { scene.remove(p); particles.splice(i, 1); }
             }

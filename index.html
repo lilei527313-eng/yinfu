@@ -2,126 +2,147 @@
 <html lang="zh">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>节奏方块 V5 (收藏家版)</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>节奏方块 V6 (iOS适配版)</title>
     <style>
+        /* 全局重置 */
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        
         body { 
             margin: 0; overflow: hidden; background: #000; 
-            font-family: 'Microsoft YaHei', sans-serif; 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             user-select: none; -webkit-user-select: none;
             touch-action: none;
+            /* 防止 iOS 回弹效果 */
+            position: fixed; width: 100%; height: 100%;
         }
         canvas { display: block; width: 100vw; height: 100vh; z-index: 1;}
 
-        /* --- 1. 顶部 UI 布局 --- */
+        /* --- UI 层 --- */
         #hud-top {
-            position: absolute; top: 10px; left: 10px; right: 10px;
+            position: absolute; top: env(safe-area-inset-top, 20px); left: 10px; right: 10px;
             display: flex; justify-content: space-between; align-items: flex-start;
             pointer-events: none; z-index: 20;
         }
 
-        /* 左侧设置 (半透明玻璃) */
+        /* 左侧设置 (毛玻璃) */
         #settings-area {
-            background: rgba(0, 0, 0, 0.5); backdrop-filter: blur(4px);
-            border: 2px solid rgba(255, 255, 255, 0.3); border-radius: 8px;
-            padding: 8px; pointer-events: auto; display: flex; flex-direction: column; gap: 8px;
+            background: rgba(20, 20, 20, 0.6); 
+            backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 16px;
+            padding: 10px; pointer-events: auto; display: flex; flex-direction: column; gap: 10px;
         }
-        .control-row { display: flex; align-items: center; gap: 8px; color: white; font-size: 14px;}
+        .control-row { display: flex; align-items: center; gap: 8px; color: white; font-size: 14px; font-weight: 600;}
+        
         button.circle-btn {
-            width: 32px; height: 32px; border-radius: 5px; 
-            border: 2px solid #fff; background: #555; color: white; cursor: pointer;
-            box-shadow: inset 0 -3px 0 rgba(0,0,0,0.5);
+            width: 36px; height: 36px; border-radius: 50%; 
+            border: 1px solid rgba(255,255,255,0.3); background: rgba(255,255,255,0.1); 
+            color: white; cursor: pointer; font-size: 18px;
+            display: flex; align-items: center; justify-content: center;
+            transition: transform 0.1s;
         }
-        button.circle-btn:active { transform: translateY(2px); box-shadow: none; }
-        .val-display { min-width: 30px; text-align: center; font-weight: bold; font-family: monospace; }
+        button.circle-btn:active { transform: scale(0.9); background: rgba(255,255,255,0.3); }
+        .val-display { min-width: 30px; text-align: center; font-weight: bold; font-family: monospace; font-size: 14px; }
 
-        /* --- 2. 右侧收集杯 (核心升级) --- */
-        #collection-panel {
-            display: flex; gap: 10px; pointer-events: auto;
-        }
-        .cup-container {
-            display: flex; flex-direction: column; align-items: center; gap: 2px;
-        }
+        /* --- 右侧收集杯 (视觉升级) --- */
+        #collection-panel { display: flex; gap: 8px; pointer-events: auto; }
+        .cup-wrapper { display: flex; flex-direction: column; align-items: center; gap: 4px; position: relative; }
+        
         .cup-body {
-            width: 40px; height: 60px;
-            background: rgba(0,0,0,0.4);
-            border: 3px solid #fff;
-            border-top: none; /* 杯口开口 */
-            border-radius: 0 0 10px 10px;
-            position: relative;
-            overflow: hidden;
-            box-shadow: 0 0 10px rgba(0,0,0,0.5);
+            width: 44px; height: 64px;
+            background: rgba(0,0,0,0.5);
+            border: 2px solid rgba(255,255,255,0.8);
+            border-top: none; 
+            border-radius: 0 0 12px 12px;
+            position: relative; overflow: hidden;
+            box-shadow: 0 0 15px rgba(0,0,0,0.3);
+            transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
         }
-        /* 液体填充层 */
+        /* 收集时的弹跳动画 */
+        .cup-body.pulse { transform: scale(1.15); border-color: #fff; box-shadow: 0 0 20px rgba(255,255,255,0.6); }
+
+        /* 液体 */
         .cup-liquid {
             position: absolute; bottom: 0; left: 0; width: 100%; height: 0%;
-            transition: height 0.3s cubic-bezier(0.4, 2, 0.6, 1); /* 弹跳效果 */
-            opacity: 0.8;
+            transition: height 0.4s cubic-bezier(0.4, 2, 0.6, 1);
+            opacity: 0.9;
         }
-        /* 液体波浪动画 */
-        .cup-liquid::after {
-            content: ''; position: absolute; top: -5px; left: 0; width: 100%; height: 10px;
-            background: inherit; filter: brightness(1.2); opacity: 0.7;
-            border-radius: 50%; transform: scaleX(1.5);
+        /* 液体波纹 */
+        .cup-liquid::before {
+            content: ''; position: absolute; left: 0; top: -5px; width: 100%; height: 10px;
+            background: inherit; border-radius: 50%; opacity: 0.5; filter: brightness(1.3);
         }
-        .cup-icon { font-size: 20px; text-shadow: 0 0 5px black; z-index: 2; position: absolute; bottom: 5px; left: 0; width: 100%; text-align: center;}
+
+        /* 音符图案 (嵌入杯中) */
+        .note-symbol {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            font-size: 28px; color: rgba(255,255,255,0.3); z-index: 2;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+        }
+        /* 满了之后变亮 */
+        .cup-body.full .note-symbol { color: #fff; text-shadow: 0 0 10px white; animation: glow 1.5s infinite alternate; }
+        @keyframes glow { from { text-shadow: 0 0 5px white; } to { text-shadow: 0 0 20px white; } }
+
         .cup-count {
-            color: white; font-weight: bold; font-size: 14px; 
-            text-shadow: 1px 1px 0 #000;
+            color: #fff; font-size: 12px; font-weight: bold; 
             background: rgba(0,0,0,0.6); padding: 2px 6px; border-radius: 4px;
+            backdrop-filter: blur(2px);
         }
-        /* 杯子颜色定义 */
-        #cup-4 .cup-liquid { background: #FF4444; }
-        #cup-8 .cup-liquid { background: #44FF44; }
-        #cup-16 .cup-liquid { background: #4488FF; }
 
-        /* --- 3. 飞行粒子 (DOM动画) --- */
-        .flying-particle {
-            position: absolute; width: 20px; height: 20px;
+        /* 飞行粒子特效 */
+        .magic-particle {
+            position: absolute; width: 16px; height: 16px;
             border-radius: 50%; z-index: 100; pointer-events: none;
-            box-shadow: 0 0 10px white;
-            animation: spin 0.5s linear infinite;
+            background: white;
+            box-shadow: 0 0 10px currentColor, 0 0 20px currentColor;
+            animation: particle-spin 0.6s linear infinite;
         }
-        @keyframes spin { 100% { transform: rotate(360deg); } }
+        @keyframes particle-spin { 100% { transform: rotate(360deg); } }
 
-        /* --- 4. 界面样式 --- */
+        /* --- 启动/结束界面 --- */
         .overlay-screen { 
             position: absolute; top:0; left:0; width:100%; height:100%; 
             background: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAgAAAAICAYAAADED76LAAAAF0lEQVQYV2NkYGD4z4AHYGNgQAmGLAMAMkkC/Q/8c4gAAAAASUVORK5CYII=') repeat;
-            background-color: #3a2e23;
+            background-color: #2b221b;
             display: flex; flex-direction: column; align-items: center; justify-content: center; 
             z-index: 100; pointer-events: auto; text-align: center; color: white;
+            padding-bottom: env(safe-area-inset-bottom);
         }
-        h1 { font-family: 'Courier New', monospace; color: #FFD700; text-shadow: 3px 3px 0 #222; margin-bottom: 20px; }
-        p { color: #eee; line-height: 1.6; text-shadow: 1px 1px 0 #000; margin-bottom: 30px;}
-        
-        .big-btn { 
-            padding: 15px 60px; font-size: 24px; background: #72b936; 
-            border: 3px solid #3c8a1f; color: #fff; font-weight: bold; cursor: pointer;
-            box-shadow: inset 0 -6px 0 rgba(0,0,0,0.3); text-shadow: 1px 1px 0 #3c8a1f;
+        h1 { 
+            font-size: 36px; margin-bottom: 15px; color: #FFD700;
+            text-shadow: 3px 3px 0 #3f3f3f; font-family: 'Courier New', monospace; 
         }
-        .big-btn:active { transform: translateY(4px); box-shadow: none; }
+        p { font-size: 16px; color: #ddd; margin-bottom: 30px; line-height: 1.6; max-width: 80%; }
 
-        /* 奖励界面 */
-        #reward-screen { display: none; z-index: 110; background: rgba(0,0,0,0.9); backdrop-filter: blur(10px); }
-        #reward-icon { width: 120px; height: 120px; image-rendering: pixelated; margin: 20px auto; animation: bounce 2s infinite; }
-        @keyframes bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-15px); } }
-        
-        #game-over-screen { display: none; }
-        #end-btn { position: absolute; bottom: 20px; right: 20px; z-index: 30; pointer-events: auto; background: #ff4444; border: 2px solid #fff; color: white; padding: 5px 15px; border-radius: 5px; font-weight: bold;}
+        .big-btn { 
+            padding: 15px 50px; font-size: 22px; 
+            background: #72b936; border: 4px solid #3c8a1f; border-radius: 8px;
+            color: #fff; font-weight: bold; cursor: pointer;
+            box-shadow: inset 0 -4px 0 rgba(0,0,0,0.3); text-shadow: 1px 1px 0 #3c8a1f;
+            -webkit-appearance: none; /* iOS 按钮样式重置 */
+        }
+        .big-btn:active { transform: translateY(4px); box-shadow: inset 0 -1px 0 rgba(0,0,0,0.3); }
+
+        /* 奖励弹窗 */
+        #reward-screen { display: none; z-index: 110; background: rgba(0,0,0,0.92); backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px); }
+        #reward-icon { width: 140px; height: 140px; image-rendering: pixelated; margin: 20px; filter: drop-shadow(0 0 25px rgba(255,215,0,0.6)); animation: float 3s ease-in-out infinite; }
+        @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-15px); } }
+
+        #end-btn { position: absolute; bottom: max(20px, env(safe-area-inset-bottom)); right: 20px; z-index: 30; pointer-events: auto; background: #ff4444; border: 2px solid #fff; color: white; padding: 8px 16px; border-radius: 8px; font-weight: bold;}
     </style>
 </head>
 <body>
 
     <div id="start-screen" class="overlay-screen">
-        <h1>🏆 节奏收藏家</h1>
+        <h1>🏆 节奏魔法师</h1>
         <p>
-            新的挑战！<br>
-            收集 红、绿、蓝 三种音符<br>
-            当三个杯子<b>都攒满 10 个</b>时<br>
-            才能召唤大奖！
+            手指按住屏幕拖动方块。<br>
+            收集满3个杯子的能量<br>
+            召唤传说中的宝藏！
         </p>
-        <button class="big-btn" onclick="startGame()">开始挑战</button>
+        <button class="big-btn" onclick="startGame()">开始游戏</button>
     </div>
 
     <div id="hud-top" style="display: none;">
@@ -141,168 +162,164 @@
         </div>
 
         <div id="collection-panel">
-            <div class="cup-container">
-                <div class="cup-body" id="cup-body-4">
-                    <div class="cup-liquid" id="liquid-4"></div>
-                    <div class="cup-icon">𝅘𝅥</div>
+            <div class="cup-wrapper">
+                <div class="cup-body" id="cup-4">
+                    <div class="cup-liquid" style="background: #FF4444;"></div>
+                    <div class="note-symbol">𝅘𝅥</div>
                 </div>
                 <div class="cup-count" id="count-4">0/10</div>
             </div>
-            <div class="cup-container">
-                <div class="cup-body" id="cup-body-8">
-                    <div class="cup-liquid" id="liquid-8"></div>
-                    <div class="cup-icon">𝅘𝅥𝅮</div>
+            <div class="cup-wrapper">
+                <div class="cup-body" id="cup-8">
+                    <div class="cup-liquid" style="background: #44FF44;"></div>
+                    <div class="note-symbol">𝅘𝅥𝅮</div>
                 </div>
                 <div class="cup-count" id="count-8">0/10</div>
             </div>
-            <div class="cup-container">
-                <div class="cup-body" id="cup-body-16">
-                    <div class="cup-liquid" id="liquid-16"></div>
-                    <div class="cup-icon">𝅘𝅥𝅯</div>
+            <div class="cup-wrapper">
+                <div class="cup-body" id="cup-16">
+                    <div class="cup-liquid" style="background: #4488FF;"></div>
+                    <div class="note-symbol">𝅘𝅥𝅯</div>
                 </div>
                 <div class="cup-count" id="count-16">0/10</div>
             </div>
         </div>
     </div>
     
-    <button id="end-btn" style="display:none;" onclick="endGame()">结束游戏</button>
+    <button id="end-btn" style="display:none;" onclick="endGame()">结束</button>
 
     <div id="reward-screen" class="overlay-screen">
-        <div style="color:#FFD700; font-size:30px;">🎉 任务达成! 🎉</div>
+        <div style="color:#FFD700; font-size:28px; font-weight:bold;">✨ 能量集满! ✨</div>
         <img id="reward-icon" src="" alt="Reward">
-        <div id="reward-name" style="font-size:24px; font-weight:bold; margin-bottom:30px;">奖励名称</div>
-        <button class="big-btn" onclick="resumeGame()">下一轮</button>
+        <div id="reward-name" style="font-size:24px; font-weight:bold; margin-bottom:30px; color:#fff;"></div>
+        <button class="big-btn" onclick="resumeGame()">继续收集</button>
     </div>
 
-    <div id="game-over-screen" class="overlay-screen">
+    <div id="game-over-screen" class="overlay-screen" style="display:none;">
         <h1>游戏结束</h1>
-        <p id="final-score-text">总收集: 0</p>
-        <button class="big-btn" onclick="restartGame()">重新开始</button>
+        <p id="final-score-text">本次收集: 0</p>
+        <button class="big-btn" onclick="restartGame()">再玩一次</button>
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/howler/2.2.3/howler.min.js"></script>
 
     <script>
-        // --- 1. 配置与状态 ---
+        // --- 1. 游戏数据配置 ---
         const NOTE_TYPES = [
-            { id: 4, color: 0xFF4444, cssColor: '#FF4444', name: '四分音符', speak: '四分音符' }, 
-            { id: 8, color: 0x44FF44, cssColor: '#44FF44', name: '八分音符', speak: '八分音符' }, 
-            { id: 16, color: 0x4488FF, cssColor: '#4488FF', name: '十六分音符', speak: '十六分音符' } 
+            { id: 4, color: 0xFF4444, css: '#FF4444', name: '四分音符', speak: '四分音符' }, 
+            { id: 8, color: 0x44FF44, css: '#44FF44', name: '八分音符', speak: '八分音符' }, 
+            { id: 16, color: 0x4488FF, css: '#4488FF', name: '十六分音符', speak: '十六分音符' } 
         ];
 
-        // 奖励配置
         const REWARDS = [
-            { type: 'rect', color: '#8B4513', name: '🍫 巧克力' },
-            { type: 'circle', color: '#FF69B4', name: '🍬 棒棒糖' },
-            { type: 'cone', color: '#FFFACD', name: '🍦 冰淇淋' },
-            { type: 'cake', color: '#FFD700', name: '🍰 草莓蛋糕' }
+            { type: 'rect', color: '#8B4513', name: '🍫 皇家巧克力' },
+            { type: 'circle', color: '#FF69B4', name: '🍭 魔法棒棒糖' },
+            { type: 'cone', color: '#FFFACD', name: '🍦 独角兽冰淇淋' },
+            { type: 'cake', color: '#FFD700', name: '🍰 黄金蛋糕' },
+            { type: 'gem', color: '#00FFFF', name: '💎 钻石' }
         ];
 
-        // 收集状态
+        // 状态变量
         let collection = { 4: 0, 8: 0, 16: 0 };
-        const GOAL_PER_TYPE = 10;
+        const GOAL = 10;
+        let totalCollected = 0;
 
         let scene, camera, renderer;
         let pointer = { x: 0, y: -0.5 };
-        let playerCursor; 
-        let notes = [];
-        let particles = [];
-        let isPlaying = false;
-        let animationId;
+        let playerCursor, notes = [], particles = [];
+        let isPlaying = false, animationId;
         
-        let gameSpeed = 1.0; 
-        let baseSwitchInterval = 4000; 
-        let currentSwitchInterval = 4000;
-        let lastSwitchTime = 0;
-        let currentTargetId = 4;
-        let worldWidth = 10;
+        let gameSpeed = 1.0, baseInterval = 4000, currentInterval = 4000;
+        let lastSwitchTime = 0, currentTargetId = 4, worldWidth = 10;
         
-        let bgm, sfxSwitch, sfxPop, sfxWin;
-        let synth = window.speechSynthesis;
-        let speechEnabled = false;
-        let chineseVoice = null;
+        let bgm, sfxSwitch, sfxPop, sfxWin, sfxFill;
+        let synth = window.speechSynthesis, speechEnabled = false, chineseVoice = null;
         let masterVolume = 0.5;
 
-        // --- 2. 核心逻辑：UI与粒子飞行 ---
+        // --- 2. 核心：收集与视觉反馈 ---
         
-        // 更新杯子UI
-        function updateCollectionUI(typeId) {
-            const count = collection[typeId];
-            const percent = Math.min(count / GOAL_PER_TYPE, 1.0) * 100;
-            
-            document.getElementById(`liquid-${typeId}`).style.height = `${percent}%`;
-            document.getElementById(`count-${typeId}`).innerText = `${Math.min(count, GOAL_PER_TYPE)}/${GOAL_PER_TYPE}`;
-            
-            // 检查是否全部达成
-            checkWinCondition();
-        }
-
-        // 创建飞行粒子 (2D DOM 动画)
-        function spawnFlyingParticle(startX, startY, typeId) {
+        function addCollection(typeId, startX, startY) {
+            // 1. 创建飞行粒子
             const typeInfo = NOTE_TYPES.find(t => t.id === typeId);
-            const targetEl = document.getElementById(`cup-body-${typeId}`);
-            const rect = targetEl.getBoundingClientRect();
-            const targetX = rect.left + rect.width / 2;
-            const targetY = rect.top + rect.height / 2;
-
             const p = document.createElement('div');
-            p.className = 'flying-particle';
-            p.style.backgroundColor = typeInfo.cssColor;
+            p.className = 'magic-particle';
+            p.style.backgroundColor = typeInfo.css;
+            p.style.color = typeInfo.css; // 用于阴影颜色
             p.style.left = startX + 'px';
             p.style.top = startY + 'px';
             document.body.appendChild(p);
 
-            // 动画
-            const duration = 500; // 0.5秒飞到
+            // 2. 计算目标位置
+            const cupEl = document.getElementById(`cup-${typeId}`);
+            const rect = cupEl.getBoundingClientRect();
+            const targetX = rect.left + rect.width / 2;
+            const targetY = rect.top + rect.height / 2;
+
+            // 3. 飞行入杯动画 (DOM)
+            const duration = 600; 
             const startTime = Date.now();
 
             function fly() {
                 const now = Date.now();
                 const progress = Math.min((now - startTime) / duration, 1);
-                // 缓动函数
-                const ease = t => t * (2 - t); 
+                const ease = t => 1 - Math.pow(1 - t, 3); // Cubic ease out
+
+                const cx = startX + (targetX - startX) * ease(progress);
+                const cy = startY + (targetY - startY) * ease(progress);
+
+                p.style.left = (cx - 8) + 'px'; // 居中修正
+                p.style.top = (cy - 8) + 'px';
                 
-                const curX = startX + (targetX - startX) * ease(progress);
-                const curY = startY + (targetY - startY) * ease(progress);
-
-                p.style.left = curX + 'px';
-                p.style.top = curY + 'px';
-                p.style.transform = `scale(${1 - progress * 0.5})`; // 飞的过程中变小
-
                 if (progress < 1) {
                     requestAnimationFrame(fly);
                 } else {
                     p.remove();
-                    // 到达后增加数据
-                    collection[typeId]++;
-                    updateCollectionUI(typeId);
+                    sfxFill.play(); // 入杯音效
+                    updateCupVisuals(typeId, cupEl);
                 }
             }
             requestAnimationFrame(fly);
         }
 
-        function checkWinCondition() {
-            if (collection[4] >= GOAL_PER_TYPE && 
-                collection[8] >= GOAL_PER_TYPE && 
-                collection[16] >= GOAL_PER_TYPE) {
-                setTimeout(showReward, 600); // 稍微延迟等粒子飞完
+        function updateCupVisuals(typeId, cupEl) {
+            if (collection[typeId] < GOAL) collection[typeId]++;
+            
+            const count = collection[typeId];
+            const percent = (count / GOAL) * 100;
+            
+            // 更新液体高度
+            cupEl.querySelector('.cup-liquid').style.height = `${percent}%`;
+            document.getElementById(`count-${typeId}`).innerText = `${count}/${GOAL}`;
+
+            // 杯子弹跳动画
+            cupEl.classList.remove('pulse');
+            void cupEl.offsetWidth; // 触发重绘
+            cupEl.classList.add('pulse');
+
+            // 检查满杯特效
+            if (count >= GOAL) {
+                cupEl.classList.add('full');
+            }
+
+            // 检查总胜利
+            if (collection[4] >= GOAL && collection[8] >= GOAL && collection[16] >= GOAL) {
+                setTimeout(showReward, 800);
             }
         }
 
         // --- 3. 奖励逻辑 ---
         function showReward() {
-            if (!isPlaying) return; // 防止重复触发
+            if (!isPlaying) return;
             isPlaying = false;
             
-            const reward = REWARDS[Math.floor(Math.random() * REWARDS.length)];
-            
-            document.getElementById('reward-icon').src = generatePixelIcon(reward.type, reward.color);
-            document.getElementById('reward-name').innerText = reward.name;
-            document.getElementById('reward-name').style.color = reward.color;
+            const r = REWARDS[Math.floor(Math.random() * REWARDS.length)];
+            document.getElementById('reward-icon').src = generatePixelIcon(r.type, r.color);
+            document.getElementById('reward-name').innerText = r.name;
+            document.getElementById('reward-name').style.color = r.color;
             
             sfxWin.play();
-            speak("太棒了！三个杯子都满了！奖励你" + reward.name);
+            speak(`哇！真厉害！奖励你${r.name}`);
             
             document.getElementById('reward-screen').style.display = 'flex';
         }
@@ -310,47 +327,49 @@
         function resumeGame() {
             // 重置收集
             collection = { 4: 0, 8: 0, 16: 0 };
-            updateCollectionUI(4); updateCollectionUI(8); updateCollectionUI(16);
-            
+            [4, 8, 16].forEach(id => {
+                const el = document.getElementById(`cup-${id}`);
+                el.querySelector('.cup-liquid').style.height = '0%';
+                el.classList.remove('full');
+                document.getElementById(`count-${id}`).innerText = '0/10';
+            });
+
             document.getElementById('reward-screen').style.display = 'none';
             isPlaying = true;
             lastSwitchTime = Date.now();
             animate();
         }
 
-        // --- 4. 像素画生成 (MC图标) ---
+        // --- 4. 像素画图标 (Canvas) ---
         function generatePixelIcon(type, color) {
-            const canvas = document.createElement('canvas');
-            canvas.width = 64; canvas.height = 64;
-            const ctx = canvas.getContext('2d');
-            ctx.imageSmoothingEnabled = false;
+            const c = document.createElement('canvas'); c.width = 64; c.height = 64;
+            const ctx = c.getContext('2d'); ctx.imageSmoothingEnabled = false;
             
             if (type === 'rect') { // 巧克力
-                ctx.fillStyle = '#5D4037'; ctx.fillRect(12, 12, 40, 48);
-                ctx.fillStyle = color; ctx.fillRect(12, 12, 40, 36); // 包装
-                ctx.fillStyle = '#8D6E63'; ctx.fillRect(16, 50, 10, 8); ctx.fillRect(30, 50, 10, 8);
-            } else if (type === 'circle') { // 糖果
-                ctx.fillStyle = '#fff'; ctx.fillRect(4, 24, 56, 16);
-                ctx.beginPath(); ctx.arc(32, 32, 20, 0, Math.PI*2); ctx.fillStyle = color; ctx.fill();
-                ctx.strokeStyle = '#fff'; ctx.lineWidth = 4; ctx.stroke();
+                ctx.fillStyle = '#5D4037'; ctx.fillRect(10, 10, 44, 50);
+                ctx.fillStyle = color; ctx.fillRect(10, 10, 44, 36); 
+                ctx.fillStyle = '#8D6E63'; ctx.fillRect(14, 50, 12, 8); ctx.fillRect(34, 50, 12, 8);
             } else if (type === 'cone') { // 冰淇淋
-                ctx.fillStyle = '#F4A460'; ctx.beginPath(); ctx.moveTo(32, 60); ctx.lineTo(16, 28); ctx.lineTo(48, 28); ctx.fill();
-                ctx.fillStyle = color; ctx.beginPath(); ctx.arc(32, 24, 20, 0, Math.PI*2); ctx.fill();
-            } else { // 蛋糕
-                ctx.fillStyle = '#8B4513'; ctx.fillRect(8, 40, 48, 16);
-                ctx.fillStyle = '#fff'; ctx.fillRect(8, 28, 48, 12);
-                ctx.fillStyle = color; ctx.fillRect(28, 12, 8, 16);
-                ctx.fillStyle = '#FF4500'; ctx.fillRect(30, 4, 4, 8);
+                ctx.fillStyle = '#F4A460'; ctx.beginPath(); ctx.moveTo(32, 62); ctx.lineTo(14, 30); ctx.lineTo(50, 30); ctx.fill();
+                ctx.fillStyle = color; ctx.beginPath(); ctx.arc(32, 24, 22, 0, Math.PI*2); ctx.fill();
+                ctx.fillStyle = '#f00'; ctx.beginPath(); ctx.arc(32, 12, 4, 0, Math.PI*2); ctx.fill();
+            } else if (type === 'gem') { // 钻石
+                ctx.fillStyle = color; ctx.beginPath(); ctx.moveTo(32, 60); ctx.lineTo(8, 24); ctx.lineTo(18, 8); ctx.lineTo(46, 8); ctx.lineTo(56, 24); ctx.fill();
+                ctx.fillStyle = 'rgba(255,255,255,0.4)'; ctx.beginPath(); ctx.moveTo(32, 60); ctx.lineTo(18, 24); ctx.lineTo(32, 24); ctx.fill();
+            } else { // 糖果/蛋糕通用
+                ctx.fillStyle = '#fff'; ctx.fillRect(8, 28, 48, 8);
+                ctx.fillStyle = color; ctx.beginPath(); ctx.arc(32, 32, 20, 0, Math.PI*2); ctx.fill();
             }
-            return canvas.toDataURL();
+            return c.toDataURL();
         }
 
-        // --- 5. 基础游戏系统 (音频/输入/渲染) ---
+        // --- 5. 音频与语音 ---
         function initAudioSystem() {
             bgm = new Howl({ src: ['https://assets.mixkit.co/music/preview/mixkit-valley-sunset-127.mp3'], loop: true, volume: 0.3 * masterVolume, html5: true });
             sfxSwitch = new Howl({ src: ['https://assets.mixkit.co/sfx/preview/mixkit-mechanical-crate-pick-up-3154.mp3'], volume: 0.6 * masterVolume });
-            sfxPop = new Howl({ src: ['https://assets.mixkit.co/sfx/preview/mixkit-arcade-game-jump-coin-216.mp3'], volume: 0.4 * masterVolume });
+            sfxPop = new Howl({ src: ['https://assets.mixkit.co/sfx/preview/mixkit-arcade-game-jump-coin-216.mp3'], volume: 0.3 * masterVolume });
             sfxWin = new Howl({ src: ['https://assets.mixkit.co/sfx/preview/mixkit-winning-chimes-2015.mp3'], volume: 0.6 * masterVolume });
+            sfxFill = new Howl({ src: ['https://assets.mixkit.co/sfx/preview/mixkit-game-ball-tap-2073.mp3'], volume: 0.5 * masterVolume });
 
             if ('speechSynthesis' in window) {
                 speechEnabled = true;
@@ -365,27 +384,32 @@
 
         function speak(text) {
             if (!speechEnabled) return;
-            // Reward状态下允许语音
-            synth.cancel(); const u = new SpeechSynthesisUtterance(text); u.rate = 1.2; u.volume = masterVolume;
-            if (chineseVoice) u.voice = chineseVoice; synth.speak(u);
+            synth.cancel(); 
+            const u = new SpeechSynthesisUtterance(text); 
+            u.rate = 1.2; u.volume = masterVolume;
+            if (chineseVoice) u.voice = chineseVoice; 
+            synth.speak(u);
         }
 
-        function setGlobalVolume(val) {
-            masterVolume = parseFloat(val.toFixed(1)); if(masterVolume < 0) masterVolume = 0; if(masterVolume > 1) masterVolume = 1;
-            Howler.volume(masterVolume); document.getElementById('vol-val').innerText = Math.round(masterVolume * 100) + "%";
+        function setGlobalVolume(v) {
+            masterVolume = Math.max(0, Math.min(1, parseFloat(v.toFixed(1))));
+            Howler.volume(masterVolume);
+            document.getElementById('vol-val').innerText = Math.round(masterVolume * 100) + "%";
         }
-        function adjustSpeed(d) { gameSpeed += d * 0.2; if(gameSpeed<0.4)gameSpeed=0.4; if(gameSpeed>2)gameSpeed=2; document.getElementById('speed-val').innerText=gameSpeed.toFixed(1); currentSwitchInterval=baseSwitchInterval/gameSpeed; }
+        function adjustSpeed(d) { gameSpeed = Math.max(0.4, Math.min(2.0, gameSpeed + d*0.2)); document.getElementById('speed-val').innerText = gameSpeed.toFixed(1); currentInterval = baseInterval / gameSpeed; }
         function adjustVolume(d) { setGlobalVolume(masterVolume + d); }
 
+        // --- 6. 游戏流程 ---
         function startGame() {
             if (!scene) { initAudioSystem(); initThreeJS(); initInput(); }
             else { notes.forEach(n => scene.remove(n.mesh)); notes = []; particles.forEach(p => scene.remove(p)); particles = []; }
             if (Howler.ctx && Howler.ctx.state === 'suspended') Howler.ctx.resume();
 
-            collection = { 4: 0, 8: 0, 16: 0 };
-            updateCollectionUI(4); updateCollectionUI(8); updateCollectionUI(16);
-            gameSpeed = 1.0; adjustSpeed(0); setGlobalVolume(0.5);
-
+            collection = {4:0,8:0,16:0}; totalCollected = 0;
+            updateCupVisuals(4, document.getElementById('cup-4'));
+            updateCupVisuals(8, document.getElementById('cup-8'));
+            updateCupVisuals(16, document.getElementById('cup-16')); // Reset visual
+            
             document.getElementById('start-screen').style.display = 'none';
             document.getElementById('game-over-screen').style.display = 'none';
             document.getElementById('hud-top').style.display = 'flex';
@@ -400,20 +424,18 @@
             isPlaying = false; cancelAnimationFrame(animationId); bgm.stop(); synth.cancel();
             document.getElementById('hud-top').style.display = 'none'; document.getElementById('end-btn').style.display = 'none';
             document.getElementById('game-over-screen').style.display = 'flex';
-            const total = collection[4] + collection[8] + collection[16];
-            document.getElementById('final-score-text').innerText = `本次收集: ${total} 个`;
+            document.getElementById('final-score-text').innerText = `累计收集: ${totalCollected} 个`;
         }
         function restartGame() { startGame(); }
 
-        // --- 6. 输入与渲染 ---
+        // --- 7. 输入 (iOS 优化) ---
         function initInput() {
             document.addEventListener('touchstart', onTouch, { passive: false });
             document.addEventListener('touchmove', onTouch, { passive: false });
             document.addEventListener('mousemove', (e) => { if(isPlaying) updatePointer(e.clientX, e.clientY); });
         }
         function onTouch(e) {
-            const target = e.target;
-            if (target.tagName === 'BUTTON' || target.closest('button')) return;
+            if (e.target.tagName === 'BUTTON' || e.target.closest('button')) return;
             e.preventDefault(); if(!isPlaying) return;
             updatePointer(e.touches[0].clientX, e.touches[0].clientY);
         }
@@ -433,31 +455,35 @@
             const t = new THREE.CanvasTexture(c); t.magFilter = THREE.NearestFilter; return t;
         }
 
+        // --- 8. 3D 场景 ---
         function initThreeJS() {
             scene = new THREE.Scene(); scene.background = new THREE.Color(0x87CEEB); scene.fog = new THREE.Fog(0x87CEEB, 15, 40);
             camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 100);
             camera.position.z = 12; camera.position.y = 2; camera.lookAt(0,0,0);
             renderer = new THREE.WebGLRenderer({ antialias: false }); renderer.setSize(window.innerWidth, window.innerHeight);
             renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); document.body.appendChild(renderer.domElement);
-            scene.add(new THREE.AmbientLight(0xcccccc, 0.6)); const dl = new THREE.DirectionalLight(0xffffff, 0.8); dl.position.set(5, 10, 7); scene.add(dl);
+            
+            scene.add(new THREE.AmbientLight(0xcccccc, 0.7)); 
+            const dl = new THREE.DirectionalLight(0xffffff, 0.8); dl.position.set(5, 10, 7); scene.add(dl);
 
             const cursorGroup = new THREE.Group();
             const centerBox = new THREE.Mesh(new THREE.BoxGeometry(1.2, 1.2, 1.2), new THREE.MeshPhongMaterial({ map: createNumberTexture("4", 0xFF4444) }));
             cursorGroup.add(centerBox);
+            // 增加一点 Bloom 效果的模拟 (Emissive)
+            centerBox.material.emissive = new THREE.Color(0x222222);
+
             const barBg = new THREE.Mesh(new THREE.PlaneGeometry(2, 0.3), new THREE.MeshBasicMaterial({ color: 0x333333 }));
             barBg.position.set(0, 1.2, 0); cursorGroup.add(barBg);
             const barFill = new THREE.Mesh(new THREE.PlaneGeometry(1.9, 0.2), new THREE.MeshBasicMaterial({ color: 0x00FF00 }));
             barFill.geometry.translate(0.95, 0, 0); barFill.position.set(-0.95, 1.2, 0.01); cursorGroup.add(barFill);
+            
             scene.add(cursorGroup);
             playerCursor = { mesh: cursorGroup, centerBox: centerBox, barFill: barFill, targetId: 4 };
-            window.addEventListener('resize', () => {
-                camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix();
-                renderer.setSize(window.innerWidth, window.innerHeight); worldWidth = calculateVisibleWidthAtZ(0);
-            });
+            window.addEventListener('resize', () => { camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); worldWidth = calculateVisibleWidthAtZ(0); });
             worldWidth = calculateVisibleWidthAtZ(0);
         }
 
-        // --- 7. 音符与逻辑 ---
+        // --- 9. 游戏逻辑 ---
         function buildVoxelNote(typeId, colorHex) {
             const g = new THREE.Group(); const mat = new THREE.MeshPhongMaterial({ color: colorHex, flatShading: true });
             const geo = new THREE.BoxGeometry(0.3, 0.3, 0.3);
@@ -487,20 +513,27 @@
             }
             hit(playerPos) {
                 spawnVoxelParticles(this.mesh.position, this.color);
-                speak(this.speakName);
+                playSound({ speakName: this.speakName });
+                totalCollected++;
                 
-                // 将 3D 碰撞点转为 2D 屏幕坐标
-                const vector = playerPos.clone();
-                vector.project(camera);
-                const x = (vector.x * 0.5 + 0.5) * window.innerWidth;
-                const y = (-(vector.y * 0.5) + 0.5) * window.innerHeight;
-                
-                // 发射粒子
-                spawnFlyingParticle(x, y, this.typeId);
-                
+                // 3D 坐标转 2D
+                const v = playerPos.clone(); v.project(camera);
+                const x = (v.x * .5 + .5) * window.innerWidth;
+                const y = (-(v.y * .5) + .5) * window.innerHeight;
+                addCollection(this.typeId, x, y);
                 this.remove();
             }
             remove() { scene.remove(this.mesh); this.active = false; }
+        }
+
+        function playSound(type) {
+            if (!isPlaying) return;
+            // 如果开启了语音且支持，则播放语音，否则播放Pop音效
+            if (speechEnabled && type.speakName) {
+                speak(type.speakName);
+            } else {
+                sfxPop.play();
+            }
         }
 
         function spawnVoxelParticles(pos, color) {
@@ -514,7 +547,8 @@
         function updatePlayerTarget() {
             let nextId; do { nextId = NOTE_TYPES[Math.floor(Math.random() * NOTE_TYPES.length)].id; } while (nextId === playerCursor.targetId);
             playerCursor.targetId = nextId;
-            playerCursor.centerBox.material.map = createNumberTexture(nextId.toString(), NOTE_TYPES.find(t => t.id === nextId).color);
+            const t = NOTE_TYPES.find(x => x.id === nextId);
+            playerCursor.centerBox.material.map = createNumberTexture(nextId.toString(), t.color);
             sfxSwitch.play();
         }
 
@@ -522,15 +556,10 @@
             if (!isPlaying) return;
             animationId = requestAnimationFrame(animate);
             const now = Date.now();
+            const progress = 1.0 - ((now - lastSwitchTime) / currentInterval);
+            if (progress <= 0) { updatePlayerTarget(); lastSwitchTime = now; playerCursor.barFill.material.color.setHex(0x00FF00); }
+            else { playerCursor.barFill.scale.x = Math.max(0, progress); if (progress < 0.25) playerCursor.barFill.material.color.setHex(0xFF0000); }
             
-            const progress = 1.0 - ((now - lastSwitchTime) / currentSwitchInterval);
-            if (progress <= 0) {
-                updatePlayerTarget(); lastSwitchTime = now; playerCursor.barFill.material.color.setHex(0x00FF00);
-            } else {
-                playerCursor.barFill.scale.x = Math.max(0, progress);
-                if (progress < 0.25) playerCursor.barFill.material.color.setHex(0xFF0000);
-            }
-
             playerCursor.mesh.position.x += (pointer.x - playerCursor.mesh.position.x) * 0.3;
             playerCursor.mesh.position.y += (pointer.y - playerCursor.mesh.position.y) * 0.3;
             playerCursor.centerBox.scale.setScalar(1 + Math.sin(now * 0.005) * 0.05);
